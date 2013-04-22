@@ -272,6 +272,22 @@ typedef void(^PSSVSimpleBlock)(void);
     return maxWidth;
 }
 
+// left of view controller as if completely expanded (no overlaps)
+- (CGFloat)expandedLeftOfController:(UIViewController*)viewController
+{
+	CGFloat left = [self currentLeftInset];
+	for (UIViewController* controller in self.viewControllers) {
+		if (controller != viewController) {
+			left += controller.containerView.width;
+		}
+		else {
+			break;
+		}
+	}
+	
+	return left;
+}
+
 // total stack width if completely expanded
 - (NSUInteger)totalStackWidth {
     NSUInteger totalStackWidth = 0;
@@ -508,12 +524,18 @@ enum {
         CGRect leftRect = idx > 0 ? [[frames objectAtIndex:idx-1] CGRectValue] : CGRectZero;
         
         if (idx == floorf(floatIndex)) {
-            BOOL dockRight = ![self isFloatIndexBetween:floatIndex] && floatIndex >= 1.f;
-            
+            // don't dock view controller to the right if it will cause a gap between the menu and the first view controller
+			CGFloat expandedLeft = [self expandedLeftOfController:currentVC];
+			BOOL dockRight = ![self isFloatIndexBetween:floatIndex] && floatIndex >= 1.f &&
+			([self screenWidth] - currentVC.containerView.width) < expandedLeft;
+			
             // should we pan it to the right?
             if (dockRight) {
                 leftPos = [self screenWidth] - currentVC.containerView.width;
             }
+			else {
+				leftPos = expandedLeft;
+			}
         }else if (idx > floatIndex) {
             // connect vc to left vc's right!
             leftPos = leftRect.origin.x + leftRect.size.width;
